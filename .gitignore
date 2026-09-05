@@ -1,0 +1,10 @@
+# Môi trường ảo Python
+venv/
+__pycache__/
+*.pyc
+
+# File chứa biến môi trường nhạy cảm
+.env
+
+# Thư mục chứa file tải lên (không đẩy file test lên GitHub)
+storage/
