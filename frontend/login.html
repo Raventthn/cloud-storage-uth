@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Đăng nhập - Dữ liệu Đám mây UTH</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <svg class="icon-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M7 18a4.5 4.5 0 0 1-.4-8.98A5.5 5.5 0 0 1 17.3 8.1 4 4 0 0 1 17 18H7Z"/>
+      </svg>
+      <div class="auth-brand-text">Dữ liệu Đám mây<br/>UTH</div>
+    </div>
+
+    <h1>Đăng nhập</h1>
+    <p class="subtitle">Truy cập vào tài liệu và tệp tin của bạn</p>
+
+    <div id="formMessage" class="form-message"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Tên đăng nhập</label>
+        <input type="text" id="username" name="username" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">Mật khẩu</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn-primary" id="submitBtn">Đăng nhập</button>
+    </form>
+
+    <p class="auth-footer">Chưa có tài khoản? <a href="register.html">Đăng ký ngay</a></p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
