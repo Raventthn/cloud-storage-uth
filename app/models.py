@@ -5,7 +5,6 @@ from datetime import datetime
 class UserRegister(BaseModel):
     username: str
     password: str
-    role: Optional[str] = "user"
 
 class UserLogin(BaseModel):
     username: str
@@ -13,6 +12,9 @@ class UserLogin(BaseModel):
 
 class ShareFileRequest(BaseModel):
     target_username: str
+
+class QuotaUpdate(BaseModel):
+    quota_bytes: int = Field(gt=0, le=100 * 1024 * 1024 * 1024)
 
 class FileResponse(BaseModel):
     id: str

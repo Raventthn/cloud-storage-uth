@@ -16,7 +16,6 @@ form.addEventListener("submit", async (e) => {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
   const confirmPassword = document.getElementById("confirmPassword").value;
-  const role = document.getElementById("role").value;
 
   if (password !== confirmPassword) {
     showMessage("Mật khẩu xác nhận không khớp", "error");
@@ -27,7 +26,7 @@ form.addEventListener("submit", async (e) => {
   submitBtn.textContent = "Đang tạo tài khoản...";
 
   try {
-    await Api.register(username, password, role);
+    await Api.register(username, password);
     showMessage("Đăng ký thành công! Đang chuyển tới trang đăng nhập...", "success");
     setTimeout(() => (window.location.href = "login.html"), 1200);
   } catch (err) {

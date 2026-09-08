@@ -70,10 +70,10 @@ async function apiRequest(path, { method = "GET", body, isForm = false } = {}) {
 }
 
 const Api = {
-  register(username, password, role) {
+  register(username, password) {
     return apiRequest("/api/auth/register", {
       method: "POST",
-      body: { username, password, role },
+      body: { username, password },
     });
   },
 
@@ -132,6 +132,11 @@ const Api = {
   getLogs() {
     return apiRequest("/api/logs");
   },
+
+  getStorageUsage() { return apiRequest("/api/storage/usage"); },
+  getTrash() { return apiRequest("/api/files/trash"); },
+  restoreFile(fileId) { return apiRequest(`/api/files/${fileId}/restore`, { method: "POST" }); },
+  permanentlyDeleteFile(fileId) { return apiRequest(`/api/files/${fileId}/permanent`, { method: "DELETE" }); },
 
   getAdminUsers() {
     return apiRequest("/api/admin/users");
