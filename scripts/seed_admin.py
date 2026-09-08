@@ -1,6 +1,11 @@
 """Run once: docker compose exec backend python scripts/seed_admin.py"""
-import asyncio, getpass, os
+import asyncio, getpass, os, sys
 from datetime import datetime
+
+# When invoked as a script, Python starts with /code/scripts on sys.path.
+# Add /code so imports from the application package resolve inside the container.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.auth import hash_password
 from app.database import users_collection
 
