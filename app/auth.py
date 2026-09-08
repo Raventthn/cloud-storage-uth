@@ -11,9 +11,12 @@ from bson import ObjectId
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-SECRET_KEY = os.getenv("JWT_SECRET", "default_secret")
+SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "120"))
+
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET phải được cấu hình qua biến môi trường")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -41,8 +44,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     except JWTError:
         raise credentials_exception
 
-    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    try:
+        user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise credentials_exception
     if user is None:
         raise credentials_exception
     user["_id"] = str(user["_id"])
     return user
+
+async def get_current_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Yêu cầu quyền quản trị viên")
+    return current_user

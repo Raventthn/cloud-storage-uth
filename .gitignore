@@ -8,3 +8,4 @@ __pycache__/
 
 # Thư mục chứa file tải lên (không đẩy file test lên GitHub)
 storage/
+backups/

@@ -1,25 +1,44 @@
-version: '3.8'
-
 services:
+  web:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
   backend:
     build: .
-    container_name: cloud_backend_api
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    volumes:
-      - ./storage:/code/storage
+    env_file: .env
     depends_on:
+      mongo_db: {condition: service_healthy}
       minio: {condition: service_started}
     expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
   mongo_db:
-    image: mongo:latest
-    container_name: cloud_mongodb
-    ports:
-      - "27018:27017"
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      MONGO_APP_DATABASE: ${DB_NAME}
     volumes:
       - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    expose: ["27017"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand(\"ping\").ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
   minio:
     image: minio/minio:RELEASE.2024-08-03T04-33-23Z
     command: server /data --console-address ":9001"

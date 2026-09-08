@@ -1,6 +1,7 @@
 requireAuthOrRedirect();
 
 let allFiles = [];
+let trashFiles = [];
 let currentFilter = "all";
 let currentCategoryFilter = "all";
 let currentSearch = "";
@@ -101,6 +102,7 @@ const FILTER_TITLES = {
   all: "Tổng quan gần đây",
   mine: "Tập tin của tôi",
   shared: "Được chia sẻ với tôi",
+  trash: "Thùng rác (tự xóa sau 30 ngày)",
 };
 const DASHBOARD_PREVIEW_COUNT = 5;
 let viewMode = "files"; // "files" | "logs"
@@ -182,9 +184,10 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
 async function loadFiles() {
   try {
     allFiles = await Api.listFiles();
+    trashFiles = await Api.getTrash();
     renderFileTable();
     renderRecentFiles();
-    renderStorage();
+    await renderStorage();
     updateNotificationDot();
   } catch (err) {
     showToast(err.message, "error");
@@ -192,7 +195,8 @@ async function loadFiles() {
 }
 
 function getFilteredFiles() {
-  return allFiles.filter((f) => {
+  const source = currentFilter === "trash" ? trashFiles : allFiles;
+  return source.filter((f) => {
     if (currentSearch && !f.filename.toLowerCase().includes(currentSearch)) return false;
     if (currentFilter === "mine" && f.owner_id !== currentUserId) return false;
     if (currentFilter === "shared" && f.owner_id === currentUserId) return false;
@@ -227,10 +231,18 @@ function renderFileTable() {
     .map((f) => {
       const isMine = f.owner_id === currentUserId;
       const isShared = (f.shared_with || []).length > 0;
-      const statusHtml = isShared
+      const statusHtml = !isMine
+        ? `<span class="share-status shared">Được chia sẻ bởi ${escapeHtml(f.owner_username || "người dùng khác")}</span>`
+        : isShared
         ? `<span class="share-status shared"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5"/><circle cx="18" cy="8" r="2.5"/><path d="M16 14.3c2.9.4 5 2.3 5 5.2"/></svg>Đã chia sẻ (${f.shared_with.length})</span>`
         : `<span class="share-status private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Cá nhân</span>`;
 
+      if (currentFilter === "trash") {
+        return `
+        <tr><td><div class="file-name-cell"><div class="file-icon">${fileIconSvg()}</div><span>${escapeHtml(f.filename)}</span></div></td>
+        <td><span class="share-status private">Đã xóa</span></td><td>${formatSize(f.size)}</td><td>${formatDate(f.deleted_at)}</td>
+        <td><div class="row-actions"><button title="Khôi phục" onclick="handleRestore('${f.id}')">Khôi phục</button><button class="danger" title="Xóa vĩnh viễn" onclick="handlePermanentDelete('${f.id}')">Xóa hẳn</button></div></td></tr>`;
+      }
       const shareBtn = isMine
         ? `<button title="Chia sẻ" onclick="openShareModal('${f.id}', '${escapeHtml(f.filename)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.9-4M8.6 13.5l6.9 4"/></svg></button>`
         : "";
@@ -291,7 +303,7 @@ function renderRecentFiles() {
 }
 
 // ---------- Storage stats ----------
-function renderStorage() {
+async function renderStorage() {
   const mine = allFiles.filter((f) => f.owner_id === currentUserId);
   const totalBytes = mine.reduce((sum, f) => sum + (f.size || 0), 0);
 
@@ -302,7 +314,15 @@ function renderStorage() {
     byCategory[cat.label].size += f.size || 0;
   });
 
-  document.getElementById("storageUsedLabel").textContent = formatSize(totalBytes);
+  let usage = { used_bytes: totalBytes, quota_bytes: STORAGE_QUOTA_BYTES, warning_level: "normal" };
+  try { usage = await Api.getStorageUsage(); } catch (err) { console.warn("Không tải được quota", err); }
+  document.getElementById("storageUsedLabel").textContent = formatSize(usage.used_bytes);
+  const quotaWrap = document.getElementById("quotaBarWrap");
+  quotaWrap.hidden = false;
+  const ratio = Math.min(100, (usage.used_bytes / usage.quota_bytes) * 100);
+  document.getElementById("quotaBarFill").style.width = `${ratio}%`;
+  document.getElementById("quotaBarFill").style.background = usage.warning_level === "full" ? "var(--red)" : usage.warning_level === "warning" ? "#e59b20" : "var(--blue)";
+  document.getElementById("quotaBarLabel").textContent = `${formatSize(usage.used_bytes)} / ${formatSize(usage.quota_bytes)} đã dùng`;
 
   const donut = document.getElementById("storageDonut");
   const legend = document.getElementById("storageLegend");
@@ -374,6 +394,17 @@ async function handleUpload(file) {
   } catch (err) {
     showToast(err.message, "error");
   }
+}
+
+async function handleRestore(fileId) {
+  try { await Api.restoreFile(fileId); showToast("Đã khôi phục tệp", "success"); await loadFiles(); }
+  catch (err) { showToast(err.message, "error"); }
+}
+
+async function handlePermanentDelete(fileId) {
+  if (!confirm("Xóa vĩnh viễn tệp này? Không thể hoàn tác.")) return;
+  try { await Api.permanentlyDeleteFile(fileId); showToast("Đã xóa vĩnh viễn", "success"); await loadFiles(); }
+  catch (err) { showToast(err.message, "error"); }
 }
 
 // ---------- Download ----------
