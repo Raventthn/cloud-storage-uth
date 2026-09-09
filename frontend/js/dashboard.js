@@ -183,7 +183,16 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
 // ---------- Load files ----------
 async function loadFiles() {
   try {
-    allFiles = await Api.listFiles();
+    const rawFiles = await Api.listFiles();
+    // Dashboard cá nhân chỉ được hiện "file của tôi" + "file thật sự chia sẻ cho tôi".
+    // Khi tài khoản là admin, GET /api/files trả về TOÀN BỘ file hệ thống (đúng thiết
+    // kế để phục vụ trang Quản trị) — nên phải tự lọc lại ở đây, không được coi
+    // "không phải của tôi" là "được chia sẻ cho tôi", nếu không sẽ lộ cả file riêng
+    // tư của người khác lên Dashboard cá nhân của admin.
+    const myUsername = getUsername();
+    allFiles = rawFiles.filter(
+      (f) => f.owner_id === currentUserId || (f.shared_with || []).includes(myUsername)
+    );
     trashFiles = await Api.getTrash();
     renderFileTable();
     renderRecentFiles();
